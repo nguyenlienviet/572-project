@@ -23,7 +23,7 @@ using namespace glm;
 shared_ptr<Shape> shape;
 
 
-#define CLOTHRESXY 20
+#define CLOTHRESXY 200
 
 double get_last_elapsed_time()
 {
@@ -199,10 +199,13 @@ void init_mesh()
 
 		for (int x = 0; x < CLOTHRESXY; x++)
 			{
-			vert[x] += vec4(randf()-0.5, randf() - 0.5, randf() - 0.5,0) * 0.01f;
+			//vert[x] += vec4(randf()-0.5, randf() - 0.5, randf() - 0.5,0) * 0.01f;
 			}
 
-		vert[CLOTHRESXY / 2].y = -5;
+		vert[CLOTHRESXY / 2 - 1].y = .5;
+		vert[CLOTHRESXY / 2].y = -1;
+		vert[CLOTHRESXY / 2 + 1].y = .5;
+		//vert[CLOTHRESXY / 2 + CLOTHRESXY].y = -2;
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * CLOTHRESXY * 3, vert, GL_DYNAMIC_DRAW);
 		glEnableVertexAttribArray(0);
