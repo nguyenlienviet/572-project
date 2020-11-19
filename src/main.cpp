@@ -202,9 +202,9 @@ void init_mesh()
 			//vert[x] += vec4(randf()-0.5, randf() - 0.5, randf() - 0.5,0) * 0.01f;
 			}
 
-		vert[CLOTHRESXY / 2 - 1].y = .5;
-		vert[CLOTHRESXY / 2].y = -1;
-		vert[CLOTHRESXY / 2 + 1].y = .5;
+		//vert[CLOTHRESXY / 2 - 1].y = .5;
+		vert[CLOTHRESXY / 2].y = -5;
+		//vert[CLOTHRESXY / 2 + 1].y = .5;
 		//vert[CLOTHRESXY / 2 + CLOTHRESXY].y = -2;
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * CLOTHRESXY * 3, vert, GL_DYNAMIC_DRAW);
@@ -217,12 +217,11 @@ void init_mesh()
 		glGenBuffers(1, &IndexBuffer);
 		//set the current state to focus on our vertex buffer
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, IndexBuffer);
-		unsigned int elements[CLOTHRESXY * 2];
+		unsigned int elements[CLOTHRESXY];
 		int ind = 0;
-		for (int x = 0; x < CLOTHRESXY-1; x++)
+		for (int x = 0; x < CLOTHRESXY; x++)
 			{
 			elements[ind++] = x;
-			elements[ind++] = x + 1;
 			}
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * ind, elements, GL_STATIC_DRAW);
 		glBindVertexArray(0);
@@ -404,10 +403,9 @@ void init_mesh()
 		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, &V[0][0]);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, &M[0][0]);
 		glBindVertexArray(VAO);	
-		glDrawElements(GL_LINES,  CLOTHRESXY*2,GL_UNSIGNED_INT,0);
+		glDrawElements(GL_LINE_STRIP, CLOTHRESXY, GL_UNSIGNED_INT, 0);
 		prog->unbind();
 	}
-
 };
 
 
