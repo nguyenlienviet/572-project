@@ -24,6 +24,8 @@ shared_ptr<Shape> shape;
 
 
 #define CLOTHRESXY 200
+#define OBJECT_SIZE 4
+#define NUM_OBJECTS 4
 
 double get_last_elapsed_time()
 {
@@ -42,7 +44,7 @@ public:
 	camera()
 	{
 		w = a = s = d = 0;
-		pos = rot = glm::vec3(0, 0, -20);
+		pos = rot = glm::vec3(0, 0, -15);
 	}
 	glm::mat4 process(double ftime)
 	{
@@ -96,7 +98,15 @@ public:
 	GLuint VAO;
 	GLuint VBOposvel;
 
+	GLuint object_VAO;
+	GLuint object_VBOposvel;
+
+	GLuint object_VAOs[NUM_OBJECTS];
+	GLuint object_VBOposvels[NUM_OBJECTS];
+
 	GLuint  IndexBuffer;
+	GLuint  ObjectIndexBuffer;
+	GLuint  ObjectIndexBuffers[NUM_OBJECTS];
 
 	//texture data
 	GLuint Texture;
@@ -191,28 +201,21 @@ void init_mesh()
 		for (int i = 0; i < CLOTHRESXY * 3; i++)
 			vert[i] = vec4(0);
 
-		int startx = -CLOTHRESXY / 2;
+		int startx = -CLOTHRESXY / 2 / 10;
 		for (int x = 0; x < CLOTHRESXY; x++)
 			{
-			vert[x] = vec4(startx + x, 0, 0, 1);			
-			}
-
-		for (int x = 0; x < CLOTHRESXY; x++)
-			{
-			//vert[x] += vec4(randf()-0.5, randf() - 0.5, randf() - 0.5,0) * 0.01f;
+			vert[x] = vec4(startx + float(x) / 10, 0, 0, 1);			
 			}
 
 		//vert[CLOTHRESXY / 2 - 1].y = .5;
-		vert[CLOTHRESXY / 2].y = -5;
+		//vert[CLOTHRESXY / 2].y = -5;
 		//vert[CLOTHRESXY / 2 + 1].y = .5;
-		//vert[CLOTHRESXY / 2 + CLOTHRESXY].y = -2;
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * CLOTHRESXY * 3, vert, GL_DYNAMIC_DRAW);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, VBOposvel);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
-
 	
 		glGenBuffers(1, &IndexBuffer);
 		//set the current state to focus on our vertex buffer
@@ -225,8 +228,38 @@ void init_mesh()
 			}
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * ind, elements, GL_STATIC_DRAW);
 		glBindVertexArray(0);
-	
 
+		for (int i = 0; i < NUM_OBJECTS; i++)
+		{
+			glGenVertexArrays(1, &object_VAOs[i]);
+			glBindVertexArray(object_VAOs[i]);
+			glGenBuffers(1, &object_VBOposvels[i]);
+			glBindBuffer(GL_ARRAY_BUFFER, object_VBOposvels[i]);
+
+			vec4 object_vert[OBJECT_SIZE];
+
+			object_vert[0] = vec4(i*.5, 1+i*1.1, 0, 1);
+			object_vert[1] = vec4(i*.5+1, 1+i*1.1, 0, 1);
+			object_vert[2] = vec4(i*.5+1, 2+i*1.1, 0, 1);
+			object_vert[3] = vec4(i*.5, 2+i*1.1, 0, 1);
+
+			glBufferData(GL_ARRAY_BUFFER, sizeof(vec4) * OBJECT_SIZE, object_vert, GL_DYNAMIC_DRAW);
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, (void*)0);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, object_VBOposvels[i]);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+			glGenBuffers(1, &ObjectIndexBuffers[i]);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ObjectIndexBuffers[i]);
+			unsigned int objectElements[4];
+			int objInd = 0;
+			for (int x = 0; x < 4; x++)
+			{
+				objectElements[objInd++] = x;
+			}
+			glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * objInd, objectElements, GL_STATIC_DRAW);
+			glBindVertexArray(0);
+		}
 	}
 	/*Note that any gl calls must always happen after a GL state is initialized */
 	void initGeom()
@@ -254,16 +287,9 @@ void init_mesh()
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 		//texture 2
-		
-
-		
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		
-		
-
 	}
 
 	//General OGL initialization - set OGL state here
@@ -349,6 +375,17 @@ void init_mesh()
 		glShaderStorageBlockBinding(computeProgram, block_index, ssbo_binding_point_index);
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, VBOposvel);
 
+		char* names[] = { "ObjectPos1", "ObjectPos2", "ObjectPos3", "ObjectPos4" };
+
+		for (int i = 0; i < NUM_OBJECTS; i++)
+		{
+			GLuint object_block_index = 0;
+			object_block_index = glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, names[i]);
+			GLuint object_ssbo_binding_point_index = i+1;
+			glShaderStorageBlockBinding(computeProgram, object_block_index, object_ssbo_binding_point_index);
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i+1, object_VBOposvels[i]);
+		}
+
 		glUseProgram(computeProgram);
 
 		GLint loc = glGetUniformLocation(computeProgram, "dx");
@@ -360,9 +397,7 @@ void init_mesh()
 		glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
-	
-		
-
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0);
 	}
 
 	/****DRAW
@@ -402,9 +437,16 @@ void init_mesh()
 		glUniformMatrix4fv(prog->getUniform("P"), 1, GL_FALSE, &P[0][0]);
 		glUniformMatrix4fv(prog->getUniform("V"), 1, GL_FALSE, &V[0][0]);
 		glUniformMatrix4fv(prog->getUniform("M"), 1, GL_FALSE, &M[0][0]);
-		glBindVertexArray(VAO);	
+		glBindVertexArray(VAO);
 		glDrawElements(GL_LINE_STRIP, CLOTHRESXY, GL_UNSIGNED_INT, 0);
+
+		for (int i = 0; i < NUM_OBJECTS; i++)
+		{
+			glBindVertexArray(object_VAOs[i]);
+			glDrawElements(GL_LINE_LOOP, OBJECT_SIZE, GL_UNSIGNED_INT, 0);
+		}
 		prog->unbind();
+
 	}
 };
 
